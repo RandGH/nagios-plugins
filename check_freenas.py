@@ -63,34 +63,58 @@ class Startup(object):
                 auth=(self._user, self._secret),
             )
         except:
-            print 'UNKNOWN - Error when contacting freenas server: ' + str(sys.exc_info())
+            print 'UNKNOWN - 1 Error when contacting freenas server: ' + str(sys.exc_info())
             sys.exit(3)
  
         if r.ok:
             try:
                 return r.json()
             except:
-                print 'UNKNOWN - Error when contacting freenas server: ' + str(sys.exc_info())
+                print 'UNKNOWN - 2 Error when contacting freenas server: ' + str(sys.exc_info())
                 sys.exit(3)
  
     def check_repl(self):
         repls = self.request('storage/replication')
         errors=0
+        repl_ok=0
+        sending=0
+        skipped=0
         msg=''
         try:
             for repl in repls:
-                if repl['repl_status'] != 'Succeeded' and repl['repl_status'] != None and repl['repl_status'][:7] != 'Sending' and repl['repl_status'] != 'Up to date':
+                if  not repl['repl_status'] or  repl['repl_status'] == 'None':
+                    skipped = skipped + 1
+                    msg = msg + repl['repl_filesystem'] + ' [No status]\n ' ;
+		    continue
+                if  repl['repl_status'][:7] == 'Sending':
+                    msg = msg + repl['repl_filesystem'] + ' [' +  repl['repl_status'] + ']\n ' ;
+                    sending = sending + 1
+		    continue
+                if repl['repl_status'] == 'Succeeded' or repl['repl_status'] == 'Up to date':
+                    repl_ok = repl_ok + 1
+                    msg = msg + repl['repl_filesystem'] + ' [' +  repl['repl_status'] + ']\n ' ;
+		    continue
                     errors = errors + 1
-                    msg = msg + repl['repl_zfs'] + ' [' +  repl['repl_status'] + '] ' ;
         except:
-            print 'UNKNOWN - Error when contacting freenas server: ' + str(sys.exc_info())
+            print 'UNKNOWN - 3 Error when contacting freenas server: ' + str(sys.exc_info())
+            print repl
             sys.exit(3)
  
         if errors > 0:
-            print 'WARNING - ' + msg.strip() + '. Go to Storage > Replication Tasks > View Replication Tasks in FreeNAS for more details.'
+            #print 'WARNING - ' + msg.strip() + '.\n Go to Storage > Replication Tasks > View Replication Tasks in FreeNAS for more details.'
+            print 'WARNING\n ' + msg.strip() 
             sys.exit(1)
-        else:
-            print 'OK - No replication errors'
+        elif sending > 0:
+                print 'OK\n' + str(sending)+ ' pending replications.\n' + msg.strip()
+            	sys.exit(0)
+        elif repl_ok > 0:
+                print 'OK\n' + str(repl_ok) +' completed replications.\n' + msg.strip()
+            	sys.exit(0)
+        elif skipped > 0:
+                print 'OK\n' + str(skipped) + ' skipped replications.\n' + msg.strip()
+            	sys.exit(0)
+	else:
+            print 'OK - No replication errors.'
             sys.exit(0)
  
     def check_alerts(self):
@@ -108,7 +132,7 @@ class Startup(object):
                     warn = warn + 1
                     msg = msg + '- (W) ' + string.replace(alert['message'], '\n', '. ') + ' '
         except:
-            print 'UNKNOWN - Error when contacting freenas server: ' + str(sys.exc_info())
+            print 'UNKNOWN - 4 Error when contacting freenas server: ' + str(sys.exc_info())
             sys.exit(3)
         
         if crit > 0:
