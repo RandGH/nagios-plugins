@@ -63,14 +63,14 @@ class Startup(object):
                 auth=(self._user, self._secret),
             )
         except:
-            print 'UNKNOWN - 1 Error when contacting freenas server: ' + str(sys.exc_info())
+            print 'UNKNOWN\n-  Error 1 when contacting freenas server: ' + str(sys.exc_info())
             sys.exit(3)
  
         if r.ok:
             try:
                 return r.json()
             except:
-                print 'UNKNOWN - 2 Error when contacting freenas server: ' + str(sys.exc_info())
+                print 'UNKNOWN\n- Error 2 when contacting freenas server: ' + str(sys.exc_info())
                 sys.exit(3)
  
     def check_repl(self):
@@ -96,7 +96,7 @@ class Startup(object):
 		    continue
                     errors = errors + 1
         except:
-            print 'UNKNOWN - 3 Error when contacting freenas server: ' + str(sys.exc_info())
+            print 'UNKNOWN\n- Error 3 when contacting freenas server: ' + str(sys.exc_info())
             print repl
             sys.exit(3)
  
@@ -114,7 +114,7 @@ class Startup(object):
                 print 'OK\n' + str(skipped) + ' skipped replications.\n' + msg.strip()
             	sys.exit(0)
 	else:
-            print 'OK - No replication errors.'
+            print 'OK\n- No replication errors.'
             sys.exit(0)
  
     def check_alerts(self):
@@ -127,22 +127,22 @@ class Startup(object):
               if alert['dismissed'] == False:
                 if alert['level'] == 'CRIT':
                     crit = crit + 1
-                    msg = msg + '- (C) ' + string.replace(alert['message'], '\n', '. ') + ' '
+                    msg = msg + '- (C) ' + string.replace(alert['message'], '\n', '. ') + '\n'
                 elif alert['level'] == 'WARN':
                     warn = warn + 1
-                    msg = msg + '- (W) ' + string.replace(alert['message'], '\n', '. ') + ' '
+                    msg = msg + '- (W) ' + string.replace(alert['message'], '\n', '. ') + '\n'
         except:
-            print 'UNKNOWN - 4 Error when contacting freenas server: ' + str(sys.exc_info())
+            print 'UNKNOWN\n- Error 4 when contacting freenas server: ' + str(sys.exc_info())
             sys.exit(3)
         
         if crit > 0:
-            print 'CRITICAL ' + msg
+            print 'CRITICAL\n' + msg
             sys.exit(2)
         elif warn > 0:
-            print 'WARNING ' + msg
+            print 'WARNINGi\n' + msg
             sys.exit(1)
         else:
-            print 'OK - No problem alerts'
+            print 'OK\n- No problem alerts'
             sys.exit(0)
 
     def check_updates(self):
