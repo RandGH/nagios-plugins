@@ -32,25 +32,25 @@
 #     if alert['message'].find('capacity for the volume') == -1:
 #         errors = errors + 1
 #
-# Troubleshooting: If you receive an error from the script, make sure you can access the api of your freenas using a web browser. 
+# Troubleshooting: If you receive an error from the script, make sure you can access the api of your freenas using a web browser.
 # Example: http://freenas/api/v1.0/system/alert/?format=json (login: root)
 
 import argparse
 import json
 import sys
 import string
- 
+
 import requests
- 
+
 class Startup(object):
- 
+
     def __init__(self, hostname, user, secret):
         self._hostname = hostname
         self._user = user
         self._secret = secret
- 
+
         self._ep = 'http://%s/api/v1.0' % hostname
- 
+
     def request(self, resource, method='GET', data=None):
         if data is None:
             data = ''
@@ -58,21 +58,22 @@ class Startup(object):
             r = requests.request(
                 method,
                 '%s/%s/' % (self._ep, resource),
+                verify=False,
                 data=json.dumps(data),
                 headers={'Content-Type': "application/json"},
                 auth=(self._user, self._secret),
             )
         except:
-            print 'UNKNOWN\n-  Error 1 when contacting freenas server: ' + str(sys.exc_info())
+            print( 'UNKNOWN\n-  Error 1 when contacting freenas server: ' + str(sys.exc_info()))
             sys.exit(3)
- 
+
         if r.ok:
             try:
                 return r.json()
             except:
-                print 'UNKNOWN\n- Error 2 when contacting freenas server: ' + str(sys.exc_info())
+                print( 'UNKNOWN\n- Error 2 when contacting freenas server: ' + str(sys.exc_info()))
                 sys.exit(3)
- 
+
     def check_repl(self):
         repls = self.request('storage/replication')
         errors=0
@@ -85,38 +86,38 @@ class Startup(object):
                 if  not repl['repl_status'] or  repl['repl_status'] == 'None':
                     skipped = skipped + 1
                     msg = msg + repl['repl_filesystem'] + ' [No status]\n ' ;
-		    continue
+                continue
                 if  repl['repl_status'][:7] == 'Sending':
                     msg = msg + repl['repl_filesystem'] + ' [' +  repl['repl_status'] + ']\n ' ;
                     sending = sending + 1
-		    continue
+                continue
                 if repl['repl_status'] == 'Succeeded' or repl['repl_status'] == 'Up to date':
                     repl_ok = repl_ok + 1
                     msg = msg + repl['repl_filesystem'] + ' [' +  repl['repl_status'] + ']\n ' ;
-		    continue
-                    errors = errors + 1
+                continue
+                errors = errors + 1
         except:
-            print 'UNKNOWN\n- Error 3 when contacting freenas server: ' + str(sys.exc_info())
-            print repl
+            print( 'UNKNOWN\n- Error 3 when contacting freenas server: ' + str(sys.exc_info()))
+            print( repl)
             sys.exit(3)
- 
+
         if errors > 0:
             #print 'WARNING - ' + msg.strip() + '.\n Go to Storage > Replication Tasks > View Replication Tasks in FreeNAS for more details.'
-            print 'WARNING\n ' + msg.strip() 
+            print ('WARNING\n ' + msg.strip() )
             sys.exit(1)
         elif sending > 0:
-                print 'OK\n' + str(sending)+ ' pending replications.\n' + msg.strip()
-            	sys.exit(0)
+                print ('OK\n' + str(sending)+ ' pending replications.\n' + msg.strip())
+                sys.exit(0)
         elif repl_ok > 0:
-                print 'OK\n' + str(repl_ok) +' completed replications.\n' + msg.strip()
-            	sys.exit(0)
+                print ('OK\n' + str(repl_ok) +' completed replications.\n' + msg.strip())
+                sys.exit(0)
         elif skipped > 0:
-                print 'OK\n' + str(skipped) + ' skipped replications.\n' + msg.strip()
-            	sys.exit(0)
-	else:
-            print 'OK\n- No replication errors.'
+                print ('OK\n' + str(skipped) + ' skipped replications.\n' + msg.strip())
+                sys.exit(0)
+        else:
+            print ('OK\n- No replication errors.')
             sys.exit(0)
- 
+
     def check_alerts(self):
         alerts = self.request('system/alert')
         warn=0
@@ -132,39 +133,39 @@ class Startup(object):
                     warn = warn + 1
                     msg = msg + '- (W) ' + string.replace(alert['message'], '\n', '. ') + '\n'
         except:
-            print 'UNKNOWN\n- Error 4 when contacting freenas server: ' + str(sys.exc_info())
+            print ('UNKNOWN\n- Error 4 when contacting freenas server: ' + str(sys.exc_info()))
             sys.exit(3)
-        
+
         if crit > 0:
-            print 'CRITICAL\n' + msg
+            print ('CRITICAL\n' + msg)
             sys.exit(2)
         elif warn > 0:
-            print 'WARNINGi\n' + msg
+            print ('WARNINGi\n' + msg)
             sys.exit(1)
         else:
-            print 'OK\n- No problem alerts'
+            print ('OK\n- No problem alerts')
             sys.exit(0)
 
     def check_updates(self):
         updates = self.request('system/update/check')
         if not updates:
-            print 'OK - No pending updates.'
+            print ('OK - No pending updates.')
             sys.exit(0)
         else:
-            print 'WARNING - There are pending updates. Go to System > Update to apply pending updates.'
+            print ('WARNING - There are pending updates. Go to System > Update to apply pending updates.')
             sys.exit(1)
- 
+
 def main():
     parser = argparse.ArgumentParser(description='Checks a freenas server using the API')
     parser.add_argument('-H', '--hostname', required=True, type=str, help='Hostname or IP address')
     parser.add_argument('-u', '--user', required=True, type=str, help='Normally only root works')
     parser.add_argument('-p', '--passwd', required=True, type=str, help='Password')
     parser.add_argument('-t', '--type', required=True, type=str, help='Type of check, either repl, alerts or updates')
- 
+
     args = parser.parse_args(sys.argv[1:])
- 
+
     startup = Startup(args.hostname, args.user, args.passwd)
- 
+
     if args.type == 'alerts':
         startup.check_alerts()
     elif args.type == 'repl':
@@ -172,9 +173,8 @@ def main():
     elif args.type == 'updates':
         startup.check_updates()
     else:
-        print "Unknown type: " + args.type
+        print ("Unknown type: " + args.type)
         sys.exit(3)
- 
+
 if __name__ == '__main__':
     main()
-    
